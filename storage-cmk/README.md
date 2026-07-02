@@ -178,15 +178,15 @@ The controls referenced here will be from the Cloud Controls Matrix (CCM) develo
 
 This requirement is addressed by the following:
 - Storage accounts are encrypted with an AES-256 key by default. Infrastructure encryption adds a second layer of encryption;
-- Use of the customer-managed key; and 
-- Only accepting TLS v1.2 or above traffic.
+- Use of the customer-managed key;
+- Only accepting TLS v1.2 or above traffic; and
 - Only accepting HTTPS traffic.
 
 **CSA CEK-04: Encryption Algorithm - Use encryption algorithms that are appropriate for data protection, considering the classification of data, associated risks, and usability of the encryption technology.**
 
 This requirement is addressed by the following:
-- Storage accounts are encrypted with an AES-256 key by default. Infrastructure encryption adds a second layer of encryption;
-- An RSA key with a 4096-bit length is used for the customer-managed key
+- Storage accounts are encrypted with an AES-256 key by default. Infrastructure encryption adds a second layer of encryption; and
+- An RSA key with a 4096-bit length is used for the customer-managed key.
 
 **CSA CEK-20: Key Recovery - Define, implement and evaluate processes, procedures and technical measures to assess the risk to operational continuity versus the risk of the keying material and the information it protects being exposed if control of the keying material is lost, which include provisions for legal and regulatory requirements.**
 
