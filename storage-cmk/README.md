@@ -1,7 +1,7 @@
 # Creating a Storage Account with a Customer Managed Key
 By default, Microsoft encrypts Azure Storage accounts with a key under their control (Microsoft-Managed Keys). However, some frameworks/standards require or recommend the organisation to be in control of their own keys - e.g.:
 - PCI DSS v4.0 (Req 3.6-3.7): Documented key-management procedures covering the full key lifecycle; for manual cleartext key operations, split knowledge and dual control are required so no single person can reconstruct a key; Key custodians must formally acknowledge their responsibilities; unauthorised key substitution must be prevented.
-- CSA Cloud Controls Matrix (CEK (Cryptography, Encryption & Key Management) Domain).
+- CSA Cloud Controls Matrix CEK (Cryptography, Encryption & Key Management) domain requires CSPs to provide the capability for users to manage their own keys.
 - HIPAA requires strict key management, including key generation, storage, distribution and rotation.
 
 This can be implemented using a Storage Account that utilises a Customer Managed Key (CMK) to encrypt the account.
@@ -46,6 +46,7 @@ First, we need to create the Key Vault. Soft-delete is enabled by default, with 
 
 *Note 2:* I have allowed public access to the account, however restricted it to my laptop's public IP address. This is fine for testing purposes - otherwise I would not be able to actually perform any actions on the key vault from my client laptop.
 ![Key Vault Creation](./assets/screenshots/Key%20Vault%20Creation.png)
+
 *Edit after-the-fact:* *As mentioned above, purge protection is required to be on for use with Azure Storage Accounts.*
 
 In order to create and manage keys, I need to assign myself the Key Vault Administrator role.
@@ -64,6 +65,7 @@ Next, we need to create the User-Assigned Managed Identity for the Storage Accou
 Why User-Assigned? This is because the Storage Account doesn't yet exist, so we cannot create a System-Assigned Managed Identity as this type of Identity is coupled to the resource. Additionally, the identity needs to have the correct Key Vault permissions **before** the storage account is created, which is not possible with a System-Assigned Managed Identity.
 
 *Note:* Make sure that the region you deploy to matches that of the Resource Group.
+
 ![Managed Identity Creation](./assets/screenshots/Managed%20Identity%20Creation.png)
 
 ## 4. Managed Identity RBAC Assignment
@@ -90,20 +92,16 @@ Notice if you look at the blob properties, SERVER ENCRYPTED is 'true', meaning t
 To ensure that the encryption key is working as intended, we will now disable the key. This should mean that the file is inaccessible, as there is no key to perform decryption on the AEK.
 
 ![Disabling Key](./assets/screenshots/Disable%20Key.png)
+
 And as we see below, when we attempt to access the file we get an error. The details of the error show 'The key vault key is not found to unwrap the encryption key.' as expected.
 ![Key Disabling Error](./assets/screenshots/Error%20when%20disabling%20key.png)
+
 This demonstrates the importance of having purge protection and soft delete. In this case, we have only disabled the key so we can re-enable it. If purge protection and soft delete were not on and the key were intentionally or accidentally deleted, we would no longer have access to our data.
 
 ## 8. Audit Logging
 It is also important to have robust audit logging configured, and this is a compliance requirement. We need to be able to see who attempted to, or successfully performed certain operations, such as UnwrapKey, WrapKey, Encrypt etc, when the event occurred, the source of the event etc.
 
-NIST Control AU-3 (Content of Audit Records): Ensure that audit records contain information that establishes the following:
-- What type of event occurred;
-- When the event occurred;
-- Where the event occurred;
-- Source of the event;
-- Outcome of the event; and
-- The Identity of any individuals, subjects or objects/identities associated with the event.
+This satisfies CSA LOG-10: Encryption Monitoring and Reporting.
 
 ## 8a. Create a Log Analytics Workspace
 **IMPORTANT NOTE:** Log Analytics charges pay-as-you-go by default, based on the amount of data you ingest, per GB. I have set a limit to 1 GB per day, just because I am paranoid.
@@ -166,9 +164,30 @@ Therefore, even though I had blocked public access I was able to perform actions
 Set public_network_access_enabled to 'true' and add a network_acls {} block to allow my IP address through (obtained through a data.http.current_ip block so it is not hard-coded), with a default deny rule. This means that public access is **only** allowed from my IP address.
 
 Overall, this was a fun lab to complete to implement a Storage Account that is encrypted with encryption keys under my control. In practice, there are a few things that can be done to follow best-practices:
-- Configuring automated key rotation and expiration. Not necessary for this lab as the resources will be destroyed after creation anyway.
-- Create backups of critical keys and store them securely. Important for keys that protect business critical data. Again, not necessary for this lab as resources will be destroyed after creation. Also, cost savings.
+- Configuring automated key rotation and expiration. Not necessary for this lab as the resources will be destroyed after creation anyway. This would satisfy CSA CEK-12: Key Rotation, CSA CEK-13: Key Revocation and CSA CEK-14: Key Destruction.
+- Create backups of critical keys and store them securely. Important for keys that protect business critical data. Again, not necessary for this lab as resources will be destroyed after creation. Also, cost savings. This would satisfy CSA CEK-20: Key Recovery.
     - Along this vein, assign permissions to the *backup* key operation only to identities that need it.
 - Locking down public access completely and using a Private Endpoint.
-- Creating a custom role for Terraform to provide it with the minimum permissions it needs to create the resources needed for this lab.
-- We have set up a Diagnostic Setting, however it would also be important to set up alerting for events, such as unusual access, failed key operations, key deletions/modifications and keys that are approaching expiration.
+- Creating a custom role for Terraform to provide it with the minimum permissions it needs to create the resources needed for this lab. This would satisfy CSA IAM-05: Least Privilege.
+- We have set up a Diagnostic Setting, however it would also be important to set up alerting for events, such as unusual access, failed key operations, key deletions/modifications and keys that are approaching expiration. This would satisfy CSA LOG-13: Failures and Anomalies Reporting.
+
+# Controls Addressed
+The controls referenced here will be from the Cloud Controls Matrix (CCM) developed by the Cloud Security Alliance (CSA).
+
+**CSA CEK-03: Data Encryption - Provide cryptographic protection to data at-rest and in-transit, using cryptographic libraries certified to approved standards.**
+
+This requirement is addressed by the following:
+- Storage accounts are encrypted with an AES-256 key by default. Infrastructure encryption adds a second layer of encryption;
+- Use of the customer-managed key; and 
+- Only accepting TLS v1.2 or above traffic.
+- Only accepting HTTPS traffic.
+
+**CSA CEK-04: Encryption Algorithm - Use encryption algorithms that are appropriate for data protection, considering the classification of data, associated risks, and usability of the encryption technology.**
+
+This requirement is addressed by the following:
+- Storage accounts are encrypted with an AES-256 key by default. Infrastructure encryption adds a second layer of encryption;
+- An RSA key with a 4096-bit length is used for the customer-managed key
+
+**CSA CEK-20: Key Recovery - Define, implement and evaluate processes, procedures and technical measures to assess the risk to operational continuity versus the risk of the keying material and the information it protects being exposed if control of the keying material is lost, which include provisions for legal and regulatory requirements.**
+
+This requirement is *partially* addressed by having soft delete and purge protection on. I haven't gone to the length of actually setting up recovery procedures.
