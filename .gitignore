@@ -48,5 +48,5 @@ terraform.rc
 **/.DS_Store
 
 # Terraform plan files
-*.tfplan
-**/*.tfplan
+*tfplan
+**/*tfplan
