@@ -44,7 +44,7 @@ resource "azurerm_key_vault" "tf-storage-kv" {
   # Obtains the tenant ID based on the currently logged in service principal. Avoids hard coding the tenant ID.
   tenant_id = data.azurerm_client_config.current.tenant_id
 
-# CEK-20: Key Recovery
+  # CEK-20: Key Recovery
   # Enable purge protection and soft delete. Set soft delete for 7 days so I can delete asap without additional charges.
   purge_protection_enabled   = true
   soft_delete_retention_days = 7
@@ -100,10 +100,10 @@ resource "azurerm_key_vault_key" "tf-storage-key" {
     "wrapKey"
   ]
 
-# CEK-04: Encryption Algorithm
-# CEK-10: Key Generation
+  # CEK-04: Encryption Algorithm
+  # CEK-10: Key Generation
   # Set the key type, I have set it to RSA (asymmetric encryption algorithm) with a key size of 4096 bits.
-  key_type = "RSA" 
+  key_type = "RSA"
   key_size = 4096
 
   # Wait for the time_sleep to be complete before creating the vault. 
@@ -129,7 +129,7 @@ resource "azurerm_storage_account" "storage-acc" {
   https_traffic_only_enabled        = true
   min_tls_version                   = "TLS1_2"
   allow_nested_items_to_be_public   = false
-  public_network_access_enabled     = true # If this was false, this would override network rules.
+  public_network_access_enabled     = true  # If this was false, this would override network rules.
   infrastructure_encryption_enabled = true # CEK-03: Data Encryption.
 
   # The network_rules block is used to allow access to the Storage Account from my personal IP address.
@@ -152,7 +152,7 @@ resource "azurerm_storage_account" "storage-acc" {
       days = 7
     }
   }
- # CEK-03: Data Encryption.
+  # CEK-03: Data Encryption.
   # Assign a Customer Managed Key to use for encryption.
   # This will be the key we created, and we need an identity for the storage account to use to authenticate to Key Vault.
   customer_managed_key {

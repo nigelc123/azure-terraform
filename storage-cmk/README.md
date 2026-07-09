@@ -191,3 +191,32 @@ This requirement is addressed by the following:
 **CSA CEK-20: Key Recovery - Define, implement and evaluate processes, procedures and technical measures to assess the risk to operational continuity versus the risk of the keying material and the information it protects being exposed if control of the keying material is lost, which include provisions for legal and regulatory requirements.**
 
 This requirement is *partially* addressed by having soft delete and purge protection on. I haven't gone to the length of actually setting up recovery procedures.
+
+# Using Azure Policy to enforce or audit adherence to requirements.
+
+## Deployment Locations
+Many organisations may have data sovereignty requirements which restrict where data can be stored and processed. Using Azure Policy, it is possible to either outright deny, or audit attempts to deploy resources outside of a set of allowed locations. For my example, I have used a built-in policy provided by Microsoft. Refer to [AllowedLocations.json](./policies/AllowedLocations.json) for the policy definition.
+
+In short, what this policy does is allow an organisation to set a list of locations that are allowed for deployment. The organisation can also elect to 'audit' the event or 'deny' the event.
+
+The way I have set up the Azure tenant is as follows:
+
+![Management Group Structure](./assets/screenshots/Updated%20mgmt%20group%20structure.png)
+
+This means I can apply separate policies at the 'Australia' vs 'New Zealand' level. This lab is in the 'Melbourne' resource group which a child of the 'Australia' Management Group. Therefore, I have set the policy to only allow deployment to locations in Australia and to Deny any attempts at deployment outside of this.
+
+Now, when I change the location of the resource group to New Zealand (or any location outside of Australia) I get the below error:
+
+![Denying policy deployment](./assets/screenshots/Azure%20Policy%20denying%20deployment.png)
+
+## Enforcing Encryption Requirements
+Another couple of examples include enforcing encryption requirements. There are a few built-in policies that can be used to enforce this, see [Enforce Infrastructure Encryption](./policies/infra_encryption.json), [Enforce use of Customer Managed Keys](./policies/cmk_requirement.json) for example. The Infrastructure Encryption policy can be set to 'Deny', which I have, however the Customer Managed Key policy can only 'Audit'. Now, let's see what happens if I attempt to deploy a storage account which does not have infrastructure encryption enabled:
+
+![Denying creation of a storage account without infra encryption enabled](./assets/screenshots/Denying%20creation%20of%20storage%20account.png)
+
+With the enforcing use of Customer Managed Keys policy, this is not able to deny, however since it would be audited, it could still be used to detect the creation of Storage Accounts that do not have Customer Managed Keys. This could be alerted, and perhaps some automation could be introduced to automatically remediate it.
+
+You could see how this would be useful. Let's say you have a compliance requirement, or a decision has been made that the risks arising from not having the above controls implemented is not acceptable, having such rules defined could enforce that the creation of new resources that do not comply is not allowed from the outset. Terraform only looks after resources that are deployed using it, or are otherwise imported into its state, however Azure Policy can capture the creation of resources through other means as well.
+
+This is a basic project, however teaches a few useful concepts.
+
