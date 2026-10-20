@@ -143,6 +143,20 @@ I first tried using Terraform to assign the role "Key Vault Administrator" to th
 
 However, when I fixed up the authentication such that the Service Principal was actually the one performing the actions this no longer worked. Again, this was due to RBAC issues. The Service Principal did not have the permissions to assign this role. The error then became: 
 
+### UPDATE, 20 October 2026:
+Upon doing more learning, I've now learned that in a production environment, team members will typically only be granted read-only access to use Terraform (i.e. enough to use terraform plan) to see what changes would happen. Team members would use their own Azure login, (i.e. through az login) to review and update Terraform code against a shared state file.
+
+A Service Principal would be used by any CI/CD pipeline to actually make the changes (e.g. GitHub Actions, Azure DevOps). This will be the only identity with access to run terraform apply, and only once a PR has been reviewed and merged. Team members will perform Terraform development locally, and only the pipeline's Service Principal will make the changes. As per Microsoft's [documentation] (https://microsoft.github.io/zerotrustassessment/docs/workshop-guidance/devsecops/DS_085), the objective of this set up is that the CI/CD pipeline's identity is the **only** supported route to production - therefore a compromised human account cannot circumvent controls.
+- This can be complemented by Policy-as-Code through Azure Policy, to deny changes that are not originated from the approved deployment identity before they touch Production.
+
+Each environment may have its own identity, e.g. Production has an Service Principal, Dev and Test have their own Service Principals. This reduces the blast radius if the Dev Service Principal, or the Dev pipeline, were to be compromised.
+
+An organisation will have a breakglass procedure where a highly restricted group of people can get temporary access to make emergency changes, e.g. through Microsoft Priviliged Identity Management (PIM).
+
+## TODO:
+1. Remove standing Contributor/Owner access.
+2. Learn CI/CD concepts, set up a simple GitHub Actions Pipeline.
+
 "Error: unexpected status 403 (403 Forbidden) with error: AuthorizationFailed: The client 'insert-application-id' with object id 'insert-object-id' does not have authorization to perform action 'Microsoft.Authorization/roleAssignments/write' over scope '/subscriptions/insert-subscription-id/resourceGroups/tf-storage-cmk/providers/Microsoft.KeyVault/vaults/insert-vault-name/providers/Microsoft.Authorization/roleAssignments/2a03aa3d-1d80-3ed0-760d-5610e324ee18' or the scope is invalid. If access was recently granted, please refresh your credentials."
 
 This told me that the Service Principal had the permissions to **create** resources, but not the permissions to role assignments. Because this is a lab environment, I have given Terraform the 'Contributor' role so it can create resources broadly - however in practice it is probably better to define more granular permissions for the resources you might need it to create.

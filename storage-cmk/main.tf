@@ -23,7 +23,6 @@ locals {
 
   storage_acc_name = "${var.project_label}${var.environment}"
   keyvault_name    = "${local.storage_acc_name}-vault"
-  key_id           = "${local.storage_acc_name}-key"
 }
 
 # Create a Resource Group for the lab.
@@ -49,7 +48,7 @@ resource "azurerm_key_vault" "tf-storage-kv" {
   purge_protection_enabled   = true
   soft_delete_retention_days = 7
 
-  # Don't allow access from public networks.
+  # Allow access from public networks, so I can access it. However, restrict it to my current IP using network_acls block.
   public_network_access_enabled = true
 
   #Wasn't working without this, potentially because the IP was being blocked by the above.
@@ -66,12 +65,14 @@ resource "azurerm_key_vault" "tf-storage-kv" {
   tags = local.required_labels
 }
 
-# Create a role assignment for the Terraform Service Principal.
-# The creator of the Key Vault doesn't implicitly get admin rights over it. This explicitly assigns the role.
+# Create a role assignment for the Terraform Service Principal. This is simulating a pipeline run.
+# The creator of the Key Vault doesn't implicitly get admin rights over it, therefore this explicitly assigns the role.
+# This would not be best practice in production, as to create role assignments within Azure requires elevated permissiong (Owner, User Access Administrator or RBAC Administrator).
+# Outside of this configuration, I have limited the roles that the Service Principal is actually able to allocate to only the roles required for this lab.
 resource "azurerm_role_assignment" "tf-sp-role" {
   scope = azurerm_key_vault.tf-storage-kv.id
 
-  # This is the minimum role needed to perform actions on keys in a key vault.
+  # This is allows administration over the Key Vault.
   role_definition_name = "Key Vault Administrator"
 
   # Assigns the role to the service principal based on ID. Uses a data field to avoid hard-coding the ID.
@@ -156,7 +157,7 @@ resource "azurerm_storage_account" "storage-acc" {
   # Assign a Customer Managed Key to use for encryption.
   # This will be the key we created, and we need an identity for the storage account to use to authenticate to Key Vault.
   customer_managed_key {
-    key_vault_key_id          = azurerm_key_vault_key.tf-storage-key.id
+    key_vault_key_id          = azurerm_key_vault_key.tf-storage-key.versionless_id # Versionless ID is used instead of regular '.id' to handle key rotation automatically.
     user_assigned_identity_id = azurerm_user_assigned_identity.tf-storage-kv-user.id
   }
 
@@ -193,6 +194,6 @@ resource "azurerm_role_assignment" "tf-crypto-user" {
   role_definition_name = "Key Vault Crypto Service Encryption User"
   principal_id         = azurerm_user_assigned_identity.tf-storage-kv-user.principal_id # Assigns the role to the identity we created.
 
-  # We need the identity to be created, and the Terraform Service Principal to have the correct role before we attempt this, otherwise the permissions may not actually be authorised..
+  # We need the identity to be created, and the Terraform Service Principal to have the correct role before we attempt this, otherwise the permissions may not actually be authorised.
   depends_on = [azurerm_user_assigned_identity.tf-storage-kv-user, azurerm_role_assignment.tf-sp-role]
 }

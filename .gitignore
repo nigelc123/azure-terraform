@@ -50,3 +50,6 @@ terraform.rc
 # Terraform plan files
 *tfplan
 **/*tfplan
+
+# Environment variables
+.env

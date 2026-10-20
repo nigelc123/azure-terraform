@@ -3,8 +3,8 @@ variable "project_label" {
   description = "Short project identifier."
 
   validation {
-    condition     = can(regex("^[a-z][a-z0-9]{2,20}$", var.project_label))
-    error_message = "Project Label must be 3-21 lowercase alphanumeric characters, and start with a letter."
+    condition     = can(regex("^[a-z][a-z0-9]{2,15}$", var.project_label))
+    error_message = "Project Label must be 3-14 lowercase alphanumeric characters, and start with a letter."
   }
 }
 
