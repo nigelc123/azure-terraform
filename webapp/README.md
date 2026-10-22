@@ -1,0 +1,4 @@
+# Project Goals
+This project will be covering how to deploy infrastructure for a basic web app to Azure. This will first be done in a simple architecture, with no real controls implemented - via the GUI and then via Terraform. Then I will introduce some further controls, such as load balancing, web application firewall, DDoS protection, monitoring, resiliency, a backend database and a Key Vault to store secrets. As a stretch goal for the better architecture, I want to also implement a CI/CD pipeline for deployments.
+
+Refer to the simple-web-architecture [README](simple-web-architecture/README.md) for details on the first part of this project.
